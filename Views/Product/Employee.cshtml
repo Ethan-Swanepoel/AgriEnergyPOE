@@ -1,0 +1,48 @@
+﻿@model AgriEnergy.ViewModels.EmployeeViewModel
+@{
+    ViewData["Title"] = "Employee - View Farmer Products";
+}
+
+<h2>View Farmer Products</h2>
+
+<form asp-action="Employee" method="post">
+    <div class="form-group">
+        <label for="SelectedFarmerId">Select Farmer:</label>
+        <select asp-for="SelectedFarmerId" class="form-control" asp-items="@(new SelectList(Model.Farmers, "UserId", "FullName"))">
+            <option value="">-- Select Farmer --</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="SelectedCategory">Select Category:</label>
+        <select asp-for="SelectedCategory" class="form-control" asp-items="@(new SelectList(Model.Categories))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">View Products</button>
+</form>
+
+@if (Model.Products != null && Model.Products.Any())
+{
+    <h3>Products</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Production Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in Model.Products)
+            {
+                <tr>
+                    <td>@product.ProductName</td>
+                    <td>@product.Category</td>
+                    <td>@product.ProductionDate.ToShortDateString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using AgriEnergy.Models;
+using AgriEnergy.ViewModels;
 
 namespace AgriEnergy.Controllers
 {
@@ -16,11 +17,6 @@ namespace AgriEnergy.Controllers
         public ProductController(AgriEnergyContext context)
         {
             _context = context;
-        }
-
-        private string GetCurrentUserId()
-        {
-            return HttpContext.Session.GetString("currentUser");
         }
 
         // GET: Product/Index
@@ -175,6 +171,58 @@ namespace AgriEnergy.Controllers
         private bool ProductExists(int id)
         {
             return _context.Products.Any(e => e.ProductId == id);
+        }
+
+        // GET: Product/Employee
+        public async Task<IActionResult> Employee()
+        {
+            var farmers = await _context.Users
+                                        .Where(u => u.UserRole == 1)
+                                        .ToListAsync();
+
+            var categories = await _context.Products
+                                           .Select(p => p.Category)
+                                           .Distinct()
+                                           .ToListAsync();
+
+            var viewModel = new EmployeeViewModel
+            {
+                Farmers = farmers,
+                Categories = categories,
+                Products = Enumerable.Empty<Product>()
+            };
+
+            return View(viewModel);
+        }
+
+        // POST: Product/Employee
+        [HttpPost]
+        public async Task<IActionResult> Employee(EmployeeViewModel viewModel)
+        {
+            viewModel.Farmers = await _context.Users
+                                              .Where(u => u.UserRole == 1)
+                                              .ToListAsync();
+
+            viewModel.Categories = await _context.Products
+                                                 .Select(p => p.Category)
+                                                 .Distinct()
+                                                 .ToListAsync();
+
+            var query = _context.Products.AsQueryable();
+
+            if (viewModel.SelectedFarmerId != 0)
+            {
+                query = query.Where(p => p.UserId == viewModel.SelectedFarmerId);
+            }
+
+            if (!string.IsNullOrEmpty(viewModel.SelectedCategory))
+            {
+                query = query.Where(p => p.Category == viewModel.SelectedCategory);
+            }
+
+            viewModel.Products = await query.ToListAsync();
+
+            return View(viewModel);
         }
     }
 }
