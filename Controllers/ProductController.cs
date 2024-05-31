@@ -66,18 +66,36 @@ namespace AgriEnergy.Controllers
             return View();
         }
 
-        // POST: Product/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ProductId,ProductName,Category,ProductionDate,UserId")] Product product)
+        public async Task<IActionResult> Create([Bind("ProductName, Category, ProductionDate")] Product product)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(product);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                // Get the User corresponding to the UserUid
+                var currentUid = HttpContext.Session.GetString("currentUser");
+                var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.UserUid == currentUid);
+
+                if (currentUser != null)
+                {
+                    // Assign the UserId to the product
+                    product.UserId = currentUser.UserId;
+
+                    // Add the product to the database
+                    _context.Add(product);
+                    await _context.SaveChangesAsync();
+
+                    // Redirect to the index action after successful creation
+                    return RedirectToAction(nameof(Index));
+                }
+                else
+                {
+                    // Handle the case where the user with the given UserUid is not found
+                    return RedirectToAction("Error", "Shared");
+                }
             }
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "FullName", product.UserId);
+
+            // If the model state is not valid, return to the view with the model
             return View(product);
         }
 
@@ -95,7 +113,13 @@ namespace AgriEnergy.Controllers
                 return NotFound();
             }
 
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "FullName", product.UserId);
+            // Get the user's full name based on the product's UserId
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == product.UserId);
+            if (user != null)
+            {
+                ViewData["UserName"] = user.FullName;
+            }
+
             return View(product);
         }
 

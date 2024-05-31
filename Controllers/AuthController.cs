@@ -1,6 +1,7 @@
 ﻿using AgriEnergy.Models;
 using Firebase.Auth;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
@@ -35,19 +36,40 @@ namespace AgriEnergy.Controllers
                 var fbAuthLink = await _auth.SignInWithEmailAndPasswordAsync(login.Email, login.Password);
                 string currentUserId = fbAuthLink.User.LocalId;
 
+                HttpContext.Session.SetString("currentUser", currentUserId);
+
+
                 if (!string.IsNullOrEmpty(currentUserId))
                 {
-                    HttpContext.Session.SetString("currentUser", currentUserId);
-                    return RedirectToAction("Index", "Product");
+                    // Get the user from the database based on UserUid
+                    var user = await _db.Users.FirstOrDefaultAsync(u => u.UserUid == currentUserId);
+
+                    if (user != null)
+                    {
+                        if (user.UserRole == 0)
+                        {
+                            // Redirect to Employee action in Product controller
+                            return RedirectToAction("Employee", "Product");
+                        }
+                        else if (user.UserRole == 1)
+                        {
+                            // Redirect to Index action in Product controller
+                            return RedirectToAction("Index", "Product");
+                        }
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, "User not found.");
+                    }
                 }
             }
             catch (FirebaseAuthException ex)
             {
                 var firebaseEx = JsonConvert.DeserializeObject<FirebaseErrorModel>(ex.ResponseData);
                 ModelState.AddModelError(string.Empty, firebaseEx.error.message);
-                return View(login);
             }
 
+            // If user role or login fails, return to login view
             return View(login);
         }
 
@@ -76,7 +98,7 @@ namespace AgriEnergy.Controllers
                     _db.Users.Add(user);
                     await _db.SaveChangesAsync();
                     HttpContext.Session.SetString("currentUser", currentUserId);
-                    return RedirectToAction("Login", "Auth");
+                    return RedirectToAction("Employee", "Product");
                 }
             }
             catch (FirebaseAuthException ex)
